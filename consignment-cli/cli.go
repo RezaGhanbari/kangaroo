@@ -1,13 +1,16 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
-	"google.golang.org/grpc"
 	"io/ioutil"
-	pb "kangaroo/consignment-service/proto/consignment"
 	"log"
 	"os"
+
+	"context"
+
+	pb "kangaroo/consignment-service/proto/consignment"
+
+	micro "github.com/micro/go-micro"
 )
 
 const (
@@ -22,32 +25,23 @@ func parseFile(file string) (*pb.Consignment, error) {
 		return nil, err
 	}
 	err = json.Unmarshal(data, &consignment)
-	if err != nil {
-		return nil, err
-	}
 	return consignment, err
 }
 
 func main() {
-	conn, err := grpc.Dial(address, grpc.WithInsecure())
-	if err != nil {
-		log.Fatalf("Did not connect: %v", err)
-	}
-	defer func() {
-		err := conn.Close()
-		if err != nil {
-			log.Fatalf("and error occured: %v", err)
-		}
-		return
-	}()
-	client := pb.NewShippingServiceClient(conn)
+	service := micro.NewService(micro.Name("kangaroo"))
+	service.Init()
 
+	client := pb.NewShippingServiceClient("kangaroo", service.Client())
+
+	// Contact the server and print out its response.
 	file := defaultFilename
 	if len(os.Args) > 1 {
 		file = os.Args[1]
 	}
 
 	consignment, err := parseFile(file)
+
 	if err != nil {
 		log.Fatalf("Could not parse file: %v", err)
 	}
